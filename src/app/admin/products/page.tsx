@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
+import Link from "next/link";
 
 interface Product {
   id: string;
@@ -197,9 +198,14 @@ export default function AdminProductsPage() {
             </p>
           </div>
 
-          <Button onClick={openForm} disabled={showForm || loading}>
-            + New Product
-          </Button>
+          <div className="gap-3 flex">
+            <Link onClick={openForm} href={"/overview"} className="border-black rounded-2xl p-2 bg-white">
+              Dashboard
+            </Link>
+            <Button onClick={openForm} disabled={showForm || loading}>
+              + New Product
+            </Button>
+          </div>
         </header>
 
         {createdProduct && (
