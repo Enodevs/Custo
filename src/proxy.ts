@@ -26,7 +26,7 @@ export function proxy(request: NextRequest) {
     .some((cookie) => cookie.name.includes("auth-token"));
 
   if (!hasSessionCookie) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/auth", request.url);
 
     loginUrl.searchParams.set("next", pathname);
 
