@@ -1,63 +1,122 @@
-/**
- * Live signal feed component showing recent complaints.
- */
 
 "use client";
 
 import { useEffect, useState } from "react";
 import type { LiveSignal } from "@/data/types";
-import { mockDataClient } from "@/data/adapters/mock";
-import { ORGANIZATIONS, LANGUAGE_CODES } from "@/data/constants";
+import { useProductContext } from "@/features/products/product-context";
+import { LANGUAGE_CODES } from "@/data/constants";
 import { formatRelativeTime } from "@/lib/formatting";
 
 export function LiveFeed() {
+  const { selectedProductId, products } = useProductContext();
+
   const [signals, setSignals] = useState<LiveSignal[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load initial signals
-    mockDataClient.getOverview().then((data) => {
-      setSignals(data.liveSignals);
-    });
+    const controller = new AbortController();
 
-    // Subscribe to new signals
-    const unsubscribe = mockDataClient.subscribeToSignals((signal) => {
-      setSignals((prev) => [signal, ...prev].slice(0, 20));
-    });
+    async function fetchSignals() {
+      try {
+        const params = new URLSearchParams();
 
-    return unsubscribe;
-  }, []);
+        if (selectedProductId !== "all") {
+          params.set("productId", selectedProductId);
+        }
+
+        const query = params.toString();
+        const response = await fetch(
+          `/api/dashboard/overview${query ? `?${query}` : ""}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ?? "Couldn't load the live feed.",
+          );
+        }
+
+        if (!controller.signal.aborted) {
+          setSignals(result.liveSignals ?? []);
+          setError(null);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Couldn't load the live feed.",
+          );
+        }
+      }
+    }
+
+    void fetchSignals();
+
+    const interval = setInterval(() => {
+      void fetchSignals();
+    }, 30_000);
+
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [selectedProductId]);
 
   return (
     <div className="space-y-1">
+      {error && (
+        <div className="rounded-md border border-destructive/30 p-3 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+
       {signals.map((signal) => {
-        const org = ORGANIZATIONS[signal.complaint.organizationId as any as string];
-        const orgColor = org?.color || "#666";
+        const complaint = signal.complaint;
+
+        const productName =
+          products.find(
+            (product) => product.id === complaint.product_id,
+          )?.name ?? "Unknown product";
+
+        const language =
+          LANGUAGE_CODES[
+            complaint.language as keyof typeof LANGUAGE_CODES
+          ] ?? complaint.language;
+
         return (
           <div
             key={signal.id}
-            className="rounded-md border border-border bg-card p-3 text-sm animate-in fade-in slide-in-from-top-2 duration-300"
+            className="animate-in fade-in slide-in-from-top-2 rounded-md border border-border bg-card p-3 text-sm duration-300"
           >
             <div className="flex items-start gap-2">
-              <div
-                className="mt-1 h-1.5 w-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: orgColor }}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium">
-                    {org?.name || "Unknown"}
+                    {productName}
                   </span>
+
                   <span className="text-xs text-muted-foreground">
-                    {signal.complaint.category}
+                    {complaint.category}
                   </span>
+
                   <span className="text-xs text-muted-foreground">
-                    {LANGUAGE_CODES[signal.complaint.language]}
+                    {language}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {signal.complaint.text}
+
+                <p className="line-clamp-2 text-xs text-muted-foreground">
+                  {complaint.text || "No complaint text"}
                 </p>
-                <p className="text-[10px] text-faint mt-1">
+
+                <p className="mt-1 text-[10px] text-muted-foreground">
                   {formatRelativeTime(signal.timestamp)}
                 </p>
               </div>
@@ -65,6 +124,19 @@ export function LiveFeed() {
           </div>
         );
       })}
+
+      {!error && signals.length === 0 && (
+        <div className="rounded-md border border-dashed border-border p-6 text-center">
+          <p className="text-sm font-medium">No recent complaints</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            New complaints will appear here when available.
+          </p>
+        </div>
+      )}
+
+      <p className="px-1 pt-2 text-[10px] text-muted-foreground">
+        Refreshes every 30 seconds
+      </p>
     </div>
   );
 }

@@ -23,7 +23,7 @@ Open [http://localhost:3000](http://localhost:3000) and you'll be redirected to 
 ## 📁 Project Structure
 
 ```
-radarx/
+Custo/
 ├── src/
 │   ├── app/                          # Next.js App Router
 │   │   ├── (app)/                    # Main application routes

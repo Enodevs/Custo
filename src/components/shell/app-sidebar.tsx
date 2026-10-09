@@ -9,12 +9,9 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   AlertTriangle,
-  BarChart3,
   Building2,
-  Languages,
   MessageSquare,
   Settings,
-  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
@@ -24,9 +21,9 @@ const NAV_ITEMS = [
   { label: "Overview", href: "/overview", icon: Activity },
   { label: "Incidents", href: "/incidents", icon: AlertTriangle },
   { label: "Complaints", href: "/complaints", icon: MessageSquare },
-  { label: "Organizations", href: "/banks", icon: Building2 },
-  { label: "Languages", href: "/languages", icon: Languages },
-  { label: "Accuracy", href: "/accuracy", icon: Target },
+  { label: "Products", href: "/admin/products", icon: Building2 },
+  // { label: "Languages", href: "/languages", icon: Languages },
+  // { label: "Accuracy", href: "/accuracy", icon: Target },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

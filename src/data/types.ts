@@ -5,6 +5,11 @@
 
 export type SeverityLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
+export interface complaintsTrendtype {
+  hour: string;
+  complaints: number;
+};
+
 /**
  * Product represents the entity customers are complaining about.
  */
@@ -194,6 +199,7 @@ export interface OverviewData {
     count: number;
   }[];
   organizationComparison: OrganizationComparison[];
+  complaintsTrend: complaintsTrendtype[];
 }
 
 // Legacy type alias for backward compatibility during migration

@@ -13,14 +13,10 @@ import type {
   OrganizationComparison,
   OverviewData,
   Settings,
-  Product,
-  ConversationMessage,
 } from "@/data/types";
 import type { DataClient } from "@/data/client";
-import { calculateBaselineForWindow } from "@/domain/baseline-calculator";
 import { calculateRatio, getIncidentStatus } from "@/domain/incident-detection";
 import {
-  calculateAverageSeverity,
   calculateIncidentScore,
 } from "@/domain/severity-score";
 
@@ -261,6 +257,7 @@ export class SupabaseDataClient implements DataClient {
       liveSignals,
       categoryHeatmap,
       organizationComparison,
+      complaintsTrend: [],
     };
   }
 

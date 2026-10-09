@@ -113,7 +113,7 @@ The project is scaffolded with modern Next.js conventions. Geist fonts match des
 ## Folder Structure
 
 ```
-radarx/
+Custo/
 ├── src/
 │   ├── app/                          # Next.js App Router
 │   │   ├── (marketing)/              # Route group for homepage

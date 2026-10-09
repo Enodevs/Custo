@@ -245,6 +245,7 @@ export class MockDataClient implements DataClient {
       liveSignals,
       categoryHeatmap,
       organizationComparison,
+      complaintsTrend: [],
     };
   }
 
