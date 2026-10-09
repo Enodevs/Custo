@@ -147,7 +147,8 @@ export class MockDataClient implements DataClient {
 
       incidents.push({
         id: `incident-${incidentId++}`,
-        organizationId,
+        product_id: organizationId,
+        organizationId, // Legacy support
         category,
         count,
         severity: calculateIncidentScore(windowComplaints),
@@ -310,8 +311,13 @@ export class MockDataClient implements DataClient {
       const search = params.search.toLowerCase();
       filtered = filtered.filter((c) => c.text.toLowerCase().includes(search));
     }
+    // Support both organizationId and product_id
     if (params?.organizationId) {
-      filtered = filtered.filter((c) => c.organizationId === params.organizationId);
+      filtered = filtered.filter(
+        (c) =>
+          c.organizationId === params.organizationId ||
+          (c as any).product_id === params.organizationId,
+      );
     }
     if (params?.category) {
       filtered = filtered.filter((c) => c.category === params.category);
@@ -452,7 +458,8 @@ export class MockDataClient implements DataClient {
 
     const newComplaint: Complaint = {
       id: `complaint-${this.complaints.length + 1}`,
-      organizationId: this.settings.workspace.organization.id,
+      product_id: this.settings.workspace.organization.id,
+      organizationId: this.settings.workspace.organization.id, // Legacy support
       category: complaint.category || "Other",
       language: "en",
       source: "in_app",
@@ -507,7 +514,8 @@ export class MockDataClient implements DataClient {
     for (let i = 0; i < 15; i++) {
       const newComplaint: Complaint = {
         id: `spike-${Date.now()}-${i}`,
-        organizationId,
+        product_id: organizationId,
+        organizationId, // Legacy support
         category,
         language: "en",
         source: i % 2 === 0 ? "x" : "in_app",

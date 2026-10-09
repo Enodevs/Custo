@@ -12,6 +12,7 @@ import type {
   LiveSignal,
   OverviewData,
   Settings,
+  Product,
 } from "./types";
 
 export interface DataClient {
@@ -71,6 +72,7 @@ export interface DataClient {
 
   /**
    * Submit a new in-app complaint (for live demo).
+   * @deprecated Use /api/support/intake endpoint instead
    */
   submitInAppComplaint(complaint: {
     text: string;
@@ -86,6 +88,11 @@ export interface DataClient {
    * Save settings.
    */
   saveSettings(settings: Partial<Settings>): Promise<Settings>;
+
+  /**
+   * Get all products.
+   */
+  getProducts?(): Promise<Product[]>;
 
   /**
    * Simulate a spike for demo purposes.

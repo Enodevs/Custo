@@ -55,7 +55,7 @@ export default function IncidentDetailPage() {
 		);
 	}
 
-	const org = ORGANIZATIONS[incident.organizationId];
+	const org = ORGANIZATIONS[incident.organizationId as any as string];
 	const orgColor = org?.color || "#666";
 
 	return (

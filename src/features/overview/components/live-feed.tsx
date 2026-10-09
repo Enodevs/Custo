@@ -30,7 +30,7 @@ export function LiveFeed() {
   return (
     <div className="space-y-1">
       {signals.map((signal) => {
-        const org = ORGANIZATIONS[signal.complaint.organizationId];
+        const org = ORGANIZATIONS[signal.complaint.organizationId as any as string];
         const orgColor = org?.color || "#666";
         return (
           <div

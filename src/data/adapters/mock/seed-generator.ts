@@ -164,7 +164,8 @@ export function generateComplaints(seed = 12345): Complaint[] {
 
     complaints.push({
       id: `complaint-${i + 1}`,
-      organizationId,
+      product_id: organizationId,
+      organizationId, // Legacy support
       category,
       language,
       source,
@@ -190,7 +191,8 @@ export function generateComplaints(seed = 12345): Complaint[] {
 
     complaints.push({
       id: `wema-incident-${i + 1}`,
-      organizationId,
+      product_id: organizationId,
+      organizationId, // Legacy support
       category: "Failed Transfer",
       language: i % 3 === 0 ? "pcm" : i % 3 === 1 ? "en" : "yo",
       source,
@@ -214,7 +216,8 @@ export function generateComplaints(seed = 12345): Complaint[] {
 
     complaints.push({
       id: `app-incident-${i + 1}`,
-      organizationId,
+      product_id: organizationId,
+      organizationId, // Legacy support
       category: "App Downtime",
       language: i % 2 === 0 ? "en" : "pcm",
       source: randomChoice(["play_store", "x", "nairaland"], rand),
@@ -235,7 +238,8 @@ export function generateComplaints(seed = 12345): Complaint[] {
 
     complaints.push({
       id: `atm-incident-${i + 1}`,
-      organizationId,
+      product_id: organizationId,
+      organizationId, // Legacy support
       category: "ATM Issue",
       language: i % 2 === 0 ? "en" : "pcm",
       source: randomChoice(["play_store", "x", "in_app"], rand),

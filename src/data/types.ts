@@ -6,6 +6,45 @@
 export type SeverityLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 /**
+ * Product represents the entity customers are complaining about.
+ */
+export interface Product {
+  id: string;
+  name: string;
+  bot_name?: string | null;
+  description: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+/**
+ * Conversation message in a complaint intake flow.
+ */
+export interface ConversationMessage {
+  id: string;
+  complaint_id: string;
+  role: "user" | "assistant";
+  content: string;
+  masked_content: string;
+  created_at: Date;
+}
+
+/**
+ * AI classification result.
+ */
+export interface AIClassification {
+  language: "en" | "pcm" | "yo" | "ha" | "mixed";
+  english_translation?: string;
+  entity?: string | null;
+  category: string;
+  severity: SeverityLevel;
+  sentiment: "negative" | "neutral" | "positive";
+  amount_ngn?: number | null;
+  channel_hint?: string | null;
+  is_genuine_complaint: boolean;
+}
+
+/**
  * Industry Pack defines categories and rules for a specific vertical.
  */
 export interface IndustryPack {
@@ -34,7 +73,8 @@ export interface BusinessConfig {
 
 export interface Complaint {
   id: string;
-  organizationId: string; // Changed from businessId for clarity
+  product_id: string; // References Product
+  organizationId?: string; // Legacy field for backward compatibility
   category: string;
   language: string;
   source: string;
@@ -42,6 +82,8 @@ export interface Complaint {
   translatedText?: string;
   severity: SeverityLevel;
   timestamp: Date;
+  ready?: boolean; // True when classification is complete
+  classification?: AIClassification;
   metadata: {
     url?: string;
     username?: string;
@@ -51,7 +93,8 @@ export interface Complaint {
 
 export interface Incident {
   id: string;
-  organizationId: string; // Changed from businessId
+  product_id: string; // References Product
+  organizationId?: string; // Legacy field for backward compatibility
   category: string;
   count: number;
   severity: number;

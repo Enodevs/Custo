@@ -93,7 +93,7 @@ export default function ComplaintsPage() {
               {complaints.map((complaint) => (
                 <tr key={complaint.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 text-sm font-medium">
-                    {ORGANIZATIONS[complaint.organizationId]?.name || "Unknown"}
+                    {ORGANIZATIONS[complaint.organizationId as any as string]?.name || "Unknown"}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {complaint.category}
