@@ -1,10 +1,7 @@
+
 "use client";
 
-/**
- * Admin page to create and manage products.
- */
-
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,141 +11,347 @@ import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 interface Product {
   id: string;
   name: string;
+  slug?: string;
   bot_name?: string;
   description: string;
   created_at: string;
 }
 
+interface ProductForm {
+  name: string;
+  bot_name: string;
+  description: string;
+}
+
+const EMPTY_FORM: ProductForm = {
+  name: "",
+  bot_name: "",
+  description: "",
+};
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState<ProductForm>(EMPTY_FORM);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    bot_name: "",
-    description: "",
-  });
+  const [formError, setFormError] = useState("");
+  const [listError, setListError] = useState("");
+  const [createdProduct, setCreatedProduct] = useState<Product | null>(null);
+  const [createdPublicUrl, setCreatedPublicUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
+    setLoadingProducts(true);
+    setListError("");
+
     try {
-      const res = await fetch("/api/products");
-      const data = await res.json();
-      if (data.products) {
-        setProducts(data.products);
-      }
-    } catch (err) {
-      console.error("Failed to load products:", err);
-    }
-  };
+      const response = await fetch("/api/products", {
+        cache: "no-store",
+      });
 
-  useEffect(() => {
-    loadProducts();
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load products.");
+      }
+
+      setProducts(data.products ?? []);
+    } catch (error) {
+      setListError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while loading products.",
+      );
+    } finally {
+      setLoadingProducts(false);
+    }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
+
+  function updateField(field: keyof ProductForm, value: string) {
+    setFormData((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+    setFormError("");
+  }
+
+  function openForm() {
+    setFormError("");
+    setCreatedProduct(null);
+    setCreatedPublicUrl("");
+    setCopied(false);
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    if (loading) return;
+
+    setShowForm(false);
+    setFormError("");
+    setFormData(EMPTY_FORM);
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+    setCreatedProduct(null);
+    setCreatedPublicUrl("");
+    setCopied(false);
+
+    const name = formData.name.trim();
+    const description = formData.description.trim();
+    const botName = formData.bot_name.trim();
+
+    if (!name || !description) {
+      setFormError("Enter a product name and business description.");
+      return;
+    }
+
+    if (name.length > 120 || botName.length > 120) {
+      setFormError("Names must be 120 characters or fewer.");
+      return;
+    }
+
+    if (description.length > 10000) {
+      setFormError("The description must be 10,000 characters or fewer.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch("/api/products", {
+      const response = await fetch("/api/products", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          bot_name: botName,
+          description,
+        }),
       });
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to create product");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create product.");
       }
 
-      setFormData({ name: "", bot_name: "", description: "" });
+      if (!data.product) {
+        throw new Error("The server did not return the created product.");
+      }
+
+      const product = data.product as Product;
+
+      setCreatedProduct(product);
+      setCreatedPublicUrl(
+        product.slug
+          ? `${window.location.origin}/p/${product.slug}`
+          : "",
+      );
+
+      setFormData(EMPTY_FORM);
       setShowForm(false);
+
+      // Creation has succeeded even if refreshing the list later fails.
       await loadProducts();
-      alert("Product created successfully!");
-    } catch (err) {
-      console.error("Create error:", err);
-      alert(err instanceof Error ? err.message : "Failed to create product");
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  async function copyPublicUrl() {
+    if (!createdPublicUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(createdPublicUrl);
+      setCopied(true);
+    } catch {
+      setFormError(
+        "Could not copy automatically. Select and copy the URL manually.",
+      );
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Products</h1>
-            <p className="text-muted-foreground">
-              Manage products for complaint intake
+            <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+            <p className="mt-2 text-muted-foreground">
+              Manage your businesses and their customer complaint channels.
             </p>
           </div>
-          <Button onClick={() => setShowForm(!showForm)}>
-            {showForm ? "Cancel" : "+ New Product"}
-          </Button>
-        </div>
 
-        {/* Create form */}
+          <Button onClick={openForm} disabled={showForm || loading}>
+            + New Product
+          </Button>
+        </header>
+
+        {createdProduct && (
+          <Card className="space-y-4 border p-6">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Product created successfully
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {createdProduct.name} is ready. Share its public support page
+                with your customers.
+              </p>
+            </div>
+
+            {createdPublicUrl ? (
+              <div className="space-y-3">
+                <label
+                  htmlFor="public-support-url"
+                  className="text-sm font-medium"
+                >
+                  Public support link
+                </label>
+
+                <Input
+                  id="public-support-url"
+                  value={createdPublicUrl}
+                  readOnly
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={copyPublicUrl}>
+                    {copied ? "Copied!" : "Copy support link"}
+                  </Button>
+
+                  <a
+                    href={createdPublicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    Open support page
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                The product was created, but its public slug was not returned.
+                Check the products API before sharing a link.
+              </p>
+            )}
+
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCreatedProduct(null);
+                setCreatedPublicUrl("");
+                setCopied(false);
+              }}
+            >
+              Dismiss
+            </Button>
+          </Card>
+        )}
+
         {showForm && (
-          <Card className="p-6 mb-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <Card className="space-y-6 border p-6">
+            <div>
+              <h2 className="text-xl font-semibold">Create a product</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Set up your business profile so Custo can handle customer
+                complaints with the right context.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               <Field>
-                <FieldLabel htmlFor="name">Product Name *</FieldLabel>
+                <FieldLabel htmlFor="name">Business or product name *</FieldLabel>
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  placeholder="e.g., Wema Bank, Jumia Nigeria"
+                  onChange={(event) => updateField("name", event.target.value)}
+                  placeholder="e.g. Acme Store"
+                  maxLength={120}
                   required
+                  disabled={loading}
                 />
+                <FieldDescription>
+                  The name customers will see on your support page.
+                </FieldDescription>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="bot_name">Bot Name (optional)</FieldLabel>
+                <FieldLabel htmlFor="bot_name">
+                  Support assistant name
+                </FieldLabel>
                 <Input
                   id="bot_name"
                   value={formData.bot_name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      bot_name: e.target.value,
-                    }))
+                  onChange={(event) =>
+                    updateField("bot_name", event.target.value)
                   }
-                  placeholder="e.g., Ada, Support Assistant"
+                  placeholder="e.g. Ada"
+                  maxLength={120}
+                  disabled={loading}
                 />
+                <FieldDescription>
+                  Optional. Defaults to your business name if left empty.
+                </FieldDescription>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="description">Description *</FieldLabel>
-                <FieldDescription>
-                  Explain what the product does, policies, common issues, etc.
-                </FieldDescription>
+                <FieldLabel htmlFor="description">
+                  Business description and support context *
+                </FieldLabel>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
+                  onChange={(event) =>
+                    updateField("description", event.target.value)
                   }
-                  placeholder="Describe the product, services, policies, and common customer issues..."
-                  rows={8}
+                  placeholder="Describe your business, products or services, relevant policies, and common customer issues."
+                  rows={7}
+                  maxLength={10000}
                   required
+                  disabled={loading}
                 />
+                <FieldDescription>
+                  Include useful facts and policies. The assistant must not
+                  invent answers when information is missing.
+                </FieldDescription>
               </Field>
 
-              <div className="flex gap-2">
+              {formError && (
+                <p
+                  role="alert"
+                  className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+                >
+                  {formError}
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Creating..." : "Create Product"}
+                  {loading ? "Creating product..." : "Create product"}
                 </Button>
+
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowForm(false)}
+                  onClick={closeForm}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
@@ -157,42 +360,110 @@ export default function AdminProductsPage() {
           </Card>
         )}
 
-        {/* Products list */}
-        <div className="space-y-4">
-          {products.length === 0 ? (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold">Your products</h2>
+            <p className="text-sm text-muted-foreground">
+              Products belonging to your account.
+            </p>
+          </div>
+
+          {listError && (
+            <Card className="space-y-3 border p-5">
+              <p role="alert" className="text-sm text-destructive">
+                {listError}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => void loadProducts()}
+                disabled={loadingProducts}
+              >
+                Try again
+              </Button>
+            </Card>
+          )}
+
+          {loadingProducts ? (
             <Card className="p-8 text-center text-muted-foreground">
-              <p>No products yet. Create one to get started.</p>
+              Loading products...
+            </Card>
+          ) : !listError && products.length === 0 ? (
+            <Card className="space-y-3 p-8 text-center">
+              <h3 className="text-lg font-semibold">No products yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Create your first product to get a public complaint page and
+                start collecting customer feedback.
+              </p>
+              {!showForm && (
+                <div>
+                  <Button onClick={openForm}>Create your first product</Button>
+                </div>
+              )}
             </Card>
           ) : (
-            products.map((product) => (
-              <Card key={product.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-1">
-                      {product.name}
-                    </h3>
-                    {product.bot_name && (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Bot: {product.bot_name}
+            <div className="space-y-4">
+              {products.map((product) => (
+                <Card key={product.id} className="space-y-4 p-5 md:p-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-semibold">{product.name}</h3>
+
+                      {product.bot_name && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Support assistant: {product.bot_name}
+                        </p>
+                      )}
+
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                        {product.description.length > 200
+                          ? `${product.description.slice(0, 200)}...`
+                          : product.description}
                       </p>
-                    )}
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {product.description.slice(0, 200)}
-                      {product.description.length > 200 && "..."}
-                    </p>
+                    </div>
+
+                    <div className="text-sm text-muted-foreground sm:text-right">
+                      <p>ID: {product.id.slice(0, 8)}</p>
+                      <p>
+                        {product.created_at
+                          ? new Date(product.created_at).toLocaleDateString()
+                          : "Date unavailable"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="ml-4 text-right text-xs text-muted-foreground">
-                    <p>ID: {product.id.slice(0, 8)}</p>
-                    <p>
-                      {new Date(product.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            ))
+
+                  {product.slug && (
+                    <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+                      <a
+                        href={`/p/${product.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium underline underline-offset-4"
+                      >
+                        Open public support page
+                      </a>
+                      <button
+                        type="button"
+                        className="text-sm text-muted-foreground underline underline-offset-4"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(
+                              `${window.location.origin}/p/${product.slug}`,
+                            );
+                          } catch {
+                            setListError("Could not copy the support link.");
+                          }
+                        }}
+                      >
+                        Copy support link
+                      </button>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
           )}
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
